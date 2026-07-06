@@ -4,7 +4,11 @@ macOS saves a screenshot to disk *or* copies it to the clipboard, never both. Sh
 
 A menu bar app. No new shortcuts, no screen recording permission, no polling.
 
-## Install
+## Download
+
+Grab `ShotClip-vX.Y.Z.zip` from the [latest release](https://github.com/milhero/ShotClip/releases/latest), unzip, and move ShotClip.app to /Applications. The app is not notarized, so on first launch allow it under System Settings → Privacy & Security.
+
+## Build from source
 
 Requires macOS 13+ and the Xcode Command Line Tools.
 

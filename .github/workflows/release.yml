@@ -1,0 +1,26 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build app bundle
+        run: make app
+
+      - name: Zip app bundle
+        run: ditto -c -k --keepParent dist/ShotClip.app "dist/ShotClip-${{ github.ref_name }}.zip"
+
+      - name: Create release with asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/ShotClip-${{ github.ref_name }}.zip
