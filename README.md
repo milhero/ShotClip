@@ -9,7 +9,7 @@ A menu bar app. No new shortcuts, no screen recording permission, no polling.
 Requires macOS 13+ and the Xcode Command Line Tools.
 
 ```sh
-git clone https://github.com/YOURNAME/ShotClip.git
+git clone https://github.com/milhero/ShotClip.git
 cd ShotClip
 make install
 ```
