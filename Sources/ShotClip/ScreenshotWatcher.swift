@@ -1,93 +1,114 @@
 import Foundation
 
-/// Watches for new screenshots using Spotlight (`NSMetadataQuery`).
+/// Watches the screenshot folder and reports each newly saved screenshot.
 ///
-/// Why Spotlight instead of FSEvents / Folder Actions / launchd WatchPaths:
-/// `screencapture` first writes a hidden temporary file and then renames it.
-/// Naive file watchers fire too early (file incomplete), twice, or not at
-/// all — this is the classic reason shell-script solutions are flaky.
-/// Spotlight only indexes the *finished* file and exposes the dedicated
-/// `kMDItemIsScreenCapture` attribute, which macOS sets exclusively for
-/// screenshots taken with the native shortcuts (⌘⇧3 / ⌘⇧4 / ⌘⇧5).
+/// Detection uses a **kqueue directory watch** (`DispatchSource` file-system
+/// source), which fires within milliseconds of a file appearing — unlike the
+/// previous Spotlight/`NSMetadataQuery` approach, whose live-update indexing
+/// lag (~1–2 s) meant a screenshot only reached the clipboard a beat late. That
+/// lag is exactly why "the first screenshot keeps the old clipboard, only the
+/// second one lands": the copy was simply arriving after the user already
+/// pasted or shot again.
+///
+/// `screencapture` writes a hidden temp file and then atomically renames it to
+/// the final name. We ignore hidden files and only act on the finished,
+/// visible file, so we never read a half-written screenshot. A low-frequency
+/// poll runs as a backstop in case a kqueue event is ever missed, so detection
+/// is instant in the common case and guaranteed within a couple of seconds
+/// worst case.
 final class ScreenshotWatcher: NSObject {
 
     /// Called on the main queue with the URL of each newly saved screenshot.
     var onScreenshot: ((URL) -> Void)?
 
-    private var query: NSMetadataQuery?
-    private var processedPaths = Set<String>()
-    private var startDate = Date()
+    private var watchedFolder: URL?
+    private var seenPaths = Set<String>()
+
+    private var dirSource: DispatchSourceFileSystemObject?
+    private var backstopTimer: DispatchSourceTimer?
+
+    /// Formats `screencapture` can produce (png is the default; the user may
+    /// have switched via `defaults write com.apple.screencapture type`).
+    private static let captureExtensions: Set<String> = [
+        "png", "jpg", "jpeg", "gif", "tiff", "tif", "heic", "heif", "pdf", "bmp",
+    ]
 
     /// (Re)starts watching the given folder. Safe to call repeatedly,
     /// e.g. after the user changes the screenshot folder.
     func start(in folder: URL) {
         stop()
-        startDate = Date()
+        watchedFolder = folder
 
-        let query = NSMetadataQuery()
-        query.predicate = NSPredicate(format: "kMDItemIsScreenCapture == 1")
-        query.searchScopes = [folder]
-        query.operationQueue = .main
-        query.notificationBatchingInterval = 0.2
+        // Baseline: remember everything already in the folder so only
+        // screenshots taken from now on are ever delivered.
+        seenPaths = Set(files(in: folder).map(\.path))
 
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(queryDidUpdate(_:)),
-            name: .NSMetadataQueryDidUpdate,
-            object: query
-        )
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(queryDidFinishGathering(_:)),
-            name: .NSMetadataQueryDidFinishGathering,
-            object: query
-        )
-
-        self.query = query
-        query.start()
+        startDirectoryWatch(folder)
+        startBackstopTimer()
     }
 
     func stop() {
-        guard let query else { return }
-        query.stop()
-        NotificationCenter.default.removeObserver(self, name: nil, object: query)
-        self.query = nil
+        backstopTimer?.cancel()
+        backstopTimer = nil
+        dirSource?.cancel() // the cancel handler closes the file descriptor
+        dirSource = nil
+        watchedFolder = nil
     }
 
-    @objc private func queryDidUpdate(_ notification: Notification) {
-        let added = notification.userInfo?[NSMetadataQueryUpdateAddedItemsKey] as? [NSMetadataItem] ?? []
-        let changed = notification.userInfo?[NSMetadataQueryUpdateChangedItemsKey] as? [NSMetadataItem] ?? []
-        process(added + changed)
+    // MARK: - Fast path: kqueue directory watch
+
+    private func startDirectoryWatch(_ folder: URL) {
+        let fd = open(folder.path, O_EVTONLY)
+        guard fd >= 0 else { return }
+
+        let source = DispatchSource.makeFileSystemObjectSource(
+            fileDescriptor: fd,
+            eventMask: [.write, .extend],
+            queue: .main
+        )
+        source.setEventHandler { [weak self] in self?.scan() }
+        source.setCancelHandler { close(fd) } // capture this fd, not a mutable field
+        dirSource = source
+        source.resume()
     }
 
-    /// A screenshot saved while the initial gathering is still running is
-    /// part of the gather results and never shows up in a `DidUpdate`
-    /// notification — without this it would be dropped (matters right after
-    /// launch and after a folder change).
-    @objc private func queryDidFinishGathering(_ notification: Notification) {
-        guard let query = notification.object as? NSMetadataQuery else { return }
-        query.disableUpdates()
-        let items = (0..<query.resultCount).compactMap { query.result(at: $0) as? NSMetadataItem }
-        query.enableUpdates()
-        process(items)
+    // MARK: - Backstop: catches anything the kqueue event might miss
+
+    private func startBackstopTimer() {
+        let timer = DispatchSource.makeTimerSource(queue: .main)
+        timer.schedule(deadline: .now() + 2, repeating: 2)
+        timer.setEventHandler { [weak self] in self?.scan() }
+        backstopTimer = timer
+        timer.resume()
     }
 
-    private func process(_ items: [NSMetadataItem]) {
-        for item in items {
-            guard let path = item.value(forAttribute: NSMetadataItemPathKey) as? String,
-                  !processedPaths.contains(path),
-                  FileManager.default.fileExists(atPath: path)
-            else { continue }
+    // MARK: - Scanning
 
-            // Ignore screenshots that already existed before watching started —
-            // both those from before launch and, after a folder change, old
-            // screenshots already sitting in the newly selected folder.
-            let created = item.value(forAttribute: NSMetadataItemFSCreationDateKey) as? Date ?? .distantPast
-            guard created >= startDate else { continue }
-
-            processedPaths.insert(path)
-            onScreenshot?(URL(fileURLWithPath: path))
+    private func scan() {
+        guard let folder = watchedFolder else { return }
+        for url in files(in: folder) {
+            process(url)
         }
+    }
+
+    /// Delivers a screenshot exactly once. A file still mid-rename (not yet on
+    /// disk) is left unmarked so the next event retries it; non-image files are
+    /// marked seen and skipped.
+    private func process(_ url: URL) {
+        let path = url.path
+        guard !seenPaths.contains(path) else { return }
+        guard FileManager.default.fileExists(atPath: path) else { return }
+        seenPaths.insert(path)
+        guard Self.captureExtensions.contains(url.pathExtension.lowercased()) else { return }
+        onScreenshot?(url)
+    }
+
+    private func files(in folder: URL) -> [URL] {
+        (try? FileManager.default.contentsOfDirectory(
+            at: folder,
+            includingPropertiesForKeys: nil,
+            options: [.skipsHiddenFiles, .skipsSubdirectoryDescendants]
+        )) ?? []
     }
 
     deinit {

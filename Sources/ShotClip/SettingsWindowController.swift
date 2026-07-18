@@ -8,6 +8,7 @@ final class SettingsWindowController: NSWindowController {
     var onSettingsChanged: (() -> Void)?
     var onChangeFolder: (() -> Void)?
     var onOpenFolder: (() -> Void)?
+    var onCleanFolder: (() -> Void)?
 
     private let defaults = UserDefaults.standard
 
@@ -46,7 +47,17 @@ final class SettingsWindowController: NSWindowController {
         showIconCheckbox.state = defaults.bool(forKey: Prefs.showMenuBarIcon) ? .on : .off
         copyImageCheckbox.state = defaults.bool(forKey: Prefs.copyImage) ? .on : .off
         copyFileCheckbox.state = defaults.bool(forKey: Prefs.copyFile) ? .on : .off
-        loginCheckbox.state = LoginItem.isEnabled ? .on : .off
+
+        if LoginItem.isEnabled {
+            loginCheckbox.state = .on
+            loginCheckbox.title = "Launch at login"
+        } else if LoginItem.requiresApproval {
+            loginCheckbox.state = .mixed
+            loginCheckbox.title = "Launch at login (approve in System Settings)"
+        } else {
+            loginCheckbox.state = .off
+            loginCheckbox.title = "Launch at login"
+        }
     }
 
     // MARK: - UI
@@ -67,7 +78,8 @@ final class SettingsWindowController: NSWindowController {
 
         let changeButton = NSButton(title: "Change…", target: self, action: #selector(changeFolderClicked))
         let openButton = NSButton(title: "Open in Finder", target: self, action: #selector(openFolderClicked))
-        let buttonRow = NSStackView(views: [changeButton, openButton])
+        let cleanButton = NSButton(title: "Clean Folder…", target: self, action: #selector(cleanFolderClicked))
+        let buttonRow = NSStackView(views: [changeButton, openButton, cleanButton])
         buttonRow.orientation = .horizontal
         buttonRow.spacing = 8
 
@@ -138,8 +150,9 @@ final class SettingsWindowController: NSWindowController {
     }
 
     @objc private func toggleLogin() {
+        let turnOn = !LoginItem.isEnabled
         do {
-            try LoginItem.setEnabled(loginCheckbox.state == .on)
+            try LoginItem.setEnabled(turnOn)
         } catch {
             let alert = NSAlert()
             alert.messageText = "Could not change login item"
@@ -150,6 +163,22 @@ final class SettingsWindowController: NSWindowController {
             (use “make install”).
             """
             alert.runModal()
+            refresh()
+            return
+        }
+
+        if turnOn, LoginItem.requiresApproval {
+            let alert = NSAlert()
+            alert.messageText = "One more step to launch at login"
+            alert.informativeText = """
+            macOS needs you to switch ShotClip on under \
+            System Settings ▸ General ▸ Login Items.
+            """
+            alert.addButton(withTitle: "Open Login Items")
+            alert.addButton(withTitle: "Later")
+            if alert.runModal() == .alertFirstButtonReturn {
+                LoginItem.openSettings()
+            }
         }
         refresh()
     }
@@ -160,5 +189,9 @@ final class SettingsWindowController: NSWindowController {
 
     @objc private func openFolderClicked() {
         onOpenFolder?()
+    }
+
+    @objc private func cleanFolderClicked() {
+        onCleanFolder?()
     }
 }

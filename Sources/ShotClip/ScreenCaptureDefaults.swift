@@ -9,6 +9,7 @@ enum ScreenCaptureDefaults {
 
     private static let domain = "com.apple.screencapture" as CFString
     private static let key = "location" as CFString
+    private static let thumbnailKey = "show-thumbnail" as CFString
 
     /// The folder native screenshots are currently saved to.
     static var location: URL {
@@ -26,6 +27,24 @@ enum ScreenCaptureDefaults {
 
     static func setLocation(_ url: URL) {
         CFPreferencesSetAppValue(key, url.path as CFString, domain)
+        CFPreferencesAppSynchronize(domain)
+        restartSystemUIServer()
+    }
+
+    /// Whether macOS shows the floating thumbnail after a capture. While the
+    /// thumbnail floats (~5 s), macOS delays writing the file to disk — which
+    /// is exactly what makes the screenshot reach the clipboard seconds late.
+    /// Defaults to `true` (macOS's own default when the key is unset).
+    static var showsThumbnail: Bool {
+        let value = CFPreferencesCopyAppValue(thumbnailKey, domain)
+        if let flag = value as? Bool { return flag }
+        if let number = value as? NSNumber { return number.boolValue }
+        return true
+    }
+
+    static func setShowsThumbnail(_ shows: Bool) {
+        let value: CFBoolean = shows ? kCFBooleanTrue : kCFBooleanFalse
+        CFPreferencesSetAppValue(thumbnailKey, value, domain)
         CFPreferencesAppSynchronize(domain)
         restartSystemUIServer()
     }

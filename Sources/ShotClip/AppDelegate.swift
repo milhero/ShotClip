@@ -11,6 +11,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         controller.onSettingsChanged = { [weak self] in self?.applySettings() }
         controller.onChangeFolder = { [weak self] in self?.changeFolder() }
         controller.onOpenFolder = { [weak self] in self?.openFolder() }
+        controller.onCleanFolder = { [weak self] in self?.cleanFolder() }
         return controller
     }()
 
@@ -19,6 +20,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var copyImageItem: NSMenuItem?
     private var copyFileItem: NSMenuItem?
     private var pauseItem: NSMenuItem?
+    private var instantItem: NSMenuItem?
     private var loginMenuItem: NSMenuItem?
 
     private var isPaused = false
@@ -29,8 +31,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         Prefs.registerDefaults()
         applySettings()
+        applyInstantCapture()
         watcher.onScreenshot = { [weak self] url in self?.handleScreenshot(url) }
         watcher.start(in: ScreenCaptureDefaults.location)
+    }
+
+    /// The floating thumbnail delays the on-disk save by ~5 s, which is the
+    /// real reason a screenshot reaches the clipboard late. When "instant
+    /// capture" is on (the default), turn the thumbnail off so macOS writes the
+    /// file immediately. Only touches the setting when it needs changing, to
+    /// avoid restarting SystemUIServer on every launch.
+    private func applyInstantCapture() {
+        let wantsInstant = defaults.bool(forKey: Prefs.instantCapture)
+        let desiredShowsThumbnail = !wantsInstant
+        if ScreenCaptureDefaults.showsThumbnail != desiredShowsThumbnail {
+            ScreenCaptureDefaults.setShowsThumbnail(desiredShowsThumbnail)
+        }
     }
 
     /// Launching ShotClip again while it is running (Spotlight, Finder, …)
@@ -98,6 +114,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             keyEquivalent: ""
         )
         changeItem.target = self
+
+        let cleanItem = menu.addItem(
+            withTitle: "Clean Screenshot Folder…",
+            action: #selector(cleanFolder),
+            keyEquivalent: ""
+        )
+        cleanItem.target = self
         menu.addItem(.separator())
 
         copyImageItem = menu.addItem(
@@ -113,6 +136,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             keyEquivalent: ""
         )
         copyFileItem?.target = self
+
+        instantItem = menu.addItem(
+            withTitle: "Instant Capture (no floating thumbnail)",
+            action: #selector(toggleInstantCapture),
+            keyEquivalent: ""
+        )
+        instantItem?.target = self
 
         pauseItem = menu.addItem(
             withTitle: "Pause",
@@ -150,8 +180,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     func menuNeedsUpdate(_ menu: NSMenu) {
         copyImageItem?.state = defaults.bool(forKey: Prefs.copyImage) ? .on : .off
         copyFileItem?.state = defaults.bool(forKey: Prefs.copyFile) ? .on : .off
+        instantItem?.state = defaults.bool(forKey: Prefs.instantCapture) ? .on : .off
         pauseItem?.state = isPaused ? .on : .off
-        loginMenuItem?.state = LoginItem.isEnabled ? .on : .off
+
+        // `.mixed` (a dash) flags "registered but waiting for your approval in
+        // System Settings", so the menu never claims login-at-launch is fully
+        // on when macOS is still holding it back.
+        if LoginItem.isEnabled {
+            loginMenuItem?.state = .on
+            loginMenuItem?.title = "Launch at Login"
+        } else if LoginItem.requiresApproval {
+            loginMenuItem?.state = .mixed
+            loginMenuItem?.title = "Launch at Login (needs approval)"
+        } else {
+            loginMenuItem?.state = .off
+            loginMenuItem?.title = "Launch at Login"
+        }
 
         let tildePath = (ScreenCaptureDefaults.location.path as NSString).abbreviatingWithTildeInPath
         folderItem?.title = "Open “\(tildePath)”"
@@ -198,6 +242,44 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         settingsWindow.refresh()
     }
 
+    /// Moves every screenshot currently in the folder to the Trash, after a
+    /// confirmation showing how many files are affected. Only files macOS
+    /// marks as screenshots are touched — see `ScreenshotCleaner`.
+    @objc private func cleanFolder() {
+        NSApp.activate(ignoringOtherApps: true)
+        let folder = ScreenCaptureDefaults.location
+        let tildePath = (folder.path as NSString).abbreviatingWithTildeInPath
+        let shots = ScreenshotCleaner.screenshots(in: folder)
+
+        guard !shots.isEmpty else {
+            let alert = NSAlert()
+            alert.messageText = "Nothing to clean"
+            alert.informativeText = "No screenshots found in “\(tildePath)”."
+            alert.runModal()
+            return
+        }
+
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = shots.count == 1
+            ? "Move 1 screenshot to the Trash?"
+            : "Move \(shots.count) screenshots to the Trash?"
+        alert.informativeText =
+            "They’ll be removed from “\(tildePath)” and put in the Trash, so you can still recover them."
+        alert.addButton(withTitle: "Move to Trash")
+        alert.addButton(withTitle: "Cancel")
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+
+        let moved = ScreenshotCleaner.moveToTrash(shots)
+        lastCaptureTitle = moved == 1 ? "Cleaned 1 screenshot" : "Cleaned \(moved) screenshots"
+        lastCaptureItem?.title = lastCaptureTitle
+    }
+
+    @objc private func toggleInstantCapture() {
+        defaults.set(!defaults.bool(forKey: Prefs.instantCapture), forKey: Prefs.instantCapture)
+        applyInstantCapture()
+    }
+
     @objc private func toggleCopyImage() {
         defaults.set(!defaults.bool(forKey: Prefs.copyImage), forKey: Prefs.copyImage)
     }
@@ -211,8 +293,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func toggleLogin() {
+        let turnOn = !LoginItem.isEnabled
         do {
-            try LoginItem.setEnabled(!LoginItem.isEnabled)
+            try LoginItem.setEnabled(turnOn)
         } catch {
             NSApp.activate(ignoringOtherApps: true)
             let alert = NSAlert()
@@ -224,6 +307,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             from /Applications (use “make install”).
             """
             alert.runModal()
+            return
+        }
+
+        // Registration can succeed but sit in "requires approval" — surface it
+        // instead of leaving the user wondering why login-at-launch is off.
+        if turnOn, LoginItem.requiresApproval {
+            NSApp.activate(ignoringOtherApps: true)
+            let alert = NSAlert()
+            alert.messageText = "One more step to launch at login"
+            alert.informativeText = """
+            macOS needs you to switch ShotClip on under \
+            System Settings ▸ General ▸ Login Items.
+            """
+            alert.addButton(withTitle: "Open Login Items")
+            alert.addButton(withTitle: "Later")
+            if alert.runModal() == .alertFirstButtonReturn {
+                LoginItem.openSettings()
+            }
         }
     }
 }
