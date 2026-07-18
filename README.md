@@ -8,7 +8,11 @@ A tiny menu bar app. No new shortcuts, no screen recording permission, no Electr
 
 ## Install
 
-Download `ShotClip.zip` from the [latest release](https://github.com/milhero/ShotClip/releases/latest), unzip, drop it in /Applications. Not notarized — first launch via right-click → Open.
+```sh
+brew install milhero/tap/shotclip
+```
+
+Or download `ShotClip.zip` from the [latest release](https://github.com/milhero/ShotClip/releases/latest), unzip, drop it in /Applications. Not notarized — first launch via right-click → Open.
 
 Or build it yourself (macOS 13+, Xcode Command Line Tools):
 

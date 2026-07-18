@@ -6,60 +6,119 @@
 <title>ShotClip — save Mac screenshots to a file and the clipboard at the same time</title>
 <meta name="description" content="macOS saves a screenshot to a file or copies it to the clipboard — never both. ShotClip is a tiny free menu bar app that does both, instantly, with the native ⌘⇧3/4/5 shortcuts.">
 <link rel="canonical" href="https://milhero.github.io/ShotClip/">
+<link rel="icon" href="icon.png">
 <meta property="og:title" content="ShotClip — screenshots to file and clipboard, instantly">
 <meta property="og:description" content="Free, open-source macOS menu bar app. Native shortcuts, no subscription.">
 <meta property="og:url" content="https://milhero.github.io/ShotClip/">
+<meta property="og:image" content="https://milhero.github.io/ShotClip/icon.png">
+<!-- Google Search Console: nach dem Anlegen der Property den Verifizierungs-Tag hier einfügen:
+<meta name="google-site-verification" content="DEIN_CODE"> -->
 <style>
-  :root { color-scheme: light dark; }
+  :root { color-scheme: light dark; --accent: #0071e3; --muted: #6e6e73; }
   * { box-sizing: border-box; }
   body {
-    margin: 0; font: 17px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    margin: 0; font: 17px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     color: #1d1d1f; background: #fff; padding: 0 20px;
   }
-  main { max-width: 640px; margin: 0 auto; padding: 56px 0 80px; }
-  h1 { font-size: 2rem; line-height: 1.2; margin: 0 0 6px; letter-spacing: -0.02em; }
-  .tag { color: #6e6e73; margin: 0 0 28px; }
-  h2 { font-size: 1.15rem; margin: 40px 0 8px; }
+  main { max-width: 640px; margin: 0 auto; padding: 48px 0 80px; }
+  .top {
+    display: flex; align-items: center; justify-content: space-between; margin-bottom: 44px;
+  }
+  .top img { width: 56px; height: 56px; border-radius: 13px; }
+  .top a { color: var(--muted); text-decoration: none; font-size: 0.9rem; }
+  .top a:hover { color: var(--accent); }
+  h1 { font-size: 2.4rem; line-height: 1.15; margin: 0 0 10px; letter-spacing: -0.02em; }
+  .tag { color: var(--muted); font-size: 1.15rem; margin: 0 0 30px; }
+  h2 { font-size: 1.15rem; margin: 44px 0 8px; }
   p { margin: 0 0 14px; }
   kbd {
     font: 0.85em ui-monospace, SFMono-Regular, Menlo, monospace;
     background: #f2f2f4; border: 1px solid #d9d9de; border-bottom-width: 2px;
-    border-radius: 5px; padding: 1px 5px;
+    border-radius: 5px; padding: 1px 6px; white-space: nowrap;
   }
-  .cta { margin: 26px 0 8px; }
+  /* visual flow */
+  .flow {
+    display: flex; align-items: center; justify-content: center; gap: 14px;
+    flex-wrap: wrap; margin: 30px 0; padding: 22px 16px;
+    background: #f5f5f7; border-radius: 14px; font-size: 1.05rem;
+  }
+  .flow .big { font-size: 1.5rem; }
+  .flow .arrow { color: var(--muted); font-size: 1.3rem; }
+  .flow .plus { color: var(--muted); }
+  .flow .out {
+    display: flex; align-items: center; gap: 7px;
+    background: #fff; border: 1px solid #e3e3e8; border-radius: 10px; padding: 7px 13px;
+  }
+  .cta { margin: 28px 0 8px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
   .btn {
-    display: inline-block; background: #0071e3; color: #fff; text-decoration: none;
-    padding: 10px 22px; border-radius: 10px; font-weight: 600;
+    display: inline-block; background: var(--accent); color: #fff; text-decoration: none;
+    padding: 11px 24px; border-radius: 11px; font-weight: 600;
   }
   .btn:hover { background: #0077ed; }
-  .sub { font-size: 0.85rem; color: #6e6e73; }
+  .star { color: var(--muted); text-decoration: none; font-size: 0.95rem; }
+  .star:hover { color: var(--accent); }
+  .sub { font-size: 0.85rem; color: var(--muted); }
+  .cmd {
+    display: flex; align-items: center; gap: 10px;
+    background: #f5f5f7; border-radius: 10px; padding: 11px 14px; margin: 14px 0;
+    font: 0.88rem ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  .cmd code { flex: 1; overflow-x: auto; white-space: nowrap; }
+  .cmd button {
+    font: 600 0.78rem -apple-system, sans-serif; color: var(--accent);
+    background: none; border: 1px solid #d9d9de; border-radius: 7px;
+    padding: 4px 10px; cursor: pointer;
+  }
+  .cmd button:hover { border-color: var(--accent); }
   pre {
-    background: #f5f5f7; border-radius: 8px; padding: 12px 14px; overflow-x: auto;
+    background: #f5f5f7; border-radius: 10px; padding: 12px 14px; overflow-x: auto;
     font: 0.85rem ui-monospace, SFMono-Regular, Menlo, monospace;
   }
-  img.demo { width: 100%; border-radius: 10px; margin: 18px 0; }
+  img.demo { width: 100%; border-radius: 12px; margin: 18px 0; }
   a { color: #0066cc; }
-  footer { margin-top: 56px; font-size: 0.85rem; color: #6e6e73; }
+  footer { margin-top: 56px; font-size: 0.85rem; color: var(--muted); }
   @media (prefers-color-scheme: dark) {
     body { background: #1c1c1e; color: #f2f2f4; }
     kbd { background: #2c2c2e; border-color: #48484a; }
-    pre { background: #2c2c2e; }
+    .flow { background: #26262a; }
+    .flow .out { background: #1c1c1e; border-color: #3a3a3e; }
+    .cmd, pre { background: #26262a; }
+    .cmd button { border-color: #48484a; }
     a { color: #409cff; }
   }
 </style>
 </head>
 <body>
 <main>
+  <div class="top">
+    <img src="icon.png" alt="ShotClip app icon">
+    <a href="https://github.com/milhero/ShotClip">View on GitHub →</a>
+  </div>
+
   <h1>ShotClip</h1>
   <p class="tag">Mac screenshots — saved to a file <em>and</em> copied to the clipboard. At the same time, instantly.</p>
 
   <p>macOS makes you pick: <kbd>⌘⇧4</kbd> saves a screenshot to a file, <kbd>⌃⌘⇧4</kbd> copies it to the clipboard — never both. So you either have a file you can't paste, or a paste with no file to keep.</p>
-  <p>ShotClip removes the choice. Keep using the native shortcuts you already know, and every screenshot lands in your folder <strong>and</strong> on your clipboard, ready to <kbd>⌘V</kbd>.</p>
+
+  <div class="flow" aria-hidden="true">
+    <span><kbd class="big">⌘⇧4</kbd></span>
+    <span class="arrow">→</span>
+    <span class="out">📁 <span>saved to your folder</span></span>
+    <span class="plus">+</span>
+    <span class="out">📋 <span>on your clipboard</span></span>
+  </div>
+
+  <p>ShotClip removes the choice. Keep the native shortcuts you already know — every screenshot lands in your folder <strong>and</strong> is ready to <kbd>⌘V</kbd>.</p>
 
   <!-- <img class="demo" src="demo.gif" alt="Taking a screenshot with cmd-shift-4 and pasting it immediately"> -->
 
   <div class="cta">
     <a class="btn" href="https://github.com/milhero/ShotClip/releases/latest">Download for macOS</a>
+    <a class="star" href="https://github.com/milhero/ShotClip">★ Star on GitHub</a>
+  </div>
+  <div class="cmd">
+    <code id="brew">brew install milhero/tap/shotclip</code>
+    <button onclick="navigator.clipboard.writeText(document.getElementById('brew').textContent).then(()=>{this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1500)})">Copy</button>
   </div>
   <p class="sub">Free &amp; open source (MIT) · macOS 13+ · ~300 KB · not notarized: first launch via right-click → Open</p>
 
@@ -73,7 +132,11 @@
   <p>Change the system-wide screenshot folder, paste as pixels or as a file (both by default), clean the screenshot folder into the Trash with one click, launch at login.</p>
 
   <h2>Install</h2>
-  <p><a href="https://github.com/milhero/ShotClip/releases/latest">Download the zip</a>, drop ShotClip.app into Applications. Or build from source:</p>
+  <div class="cmd">
+    <code id="brew2">brew install milhero/tap/shotclip</code>
+    <button onclick="navigator.clipboard.writeText(document.getElementById('brew2').textContent).then(()=>{this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1500)})">Copy</button>
+  </div>
+  <p>Or <a href="https://github.com/milhero/ShotClip/releases/latest">download the zip</a> and drop ShotClip.app into Applications. Or build from source:</p>
   <pre>git clone https://github.com/milhero/ShotClip.git
 cd ShotClip &amp;&amp; make install</pre>
 
