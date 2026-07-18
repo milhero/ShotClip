@@ -1,47 +1,41 @@
 # ShotClip
 
-macOS saves a screenshot to disk *or* copies it to the clipboard, never both. ShotClip does both: take a screenshot with the native shortcuts (⌘⇧3/4/5) and it lands in your folder and on your clipboard.
+macOS saves a screenshot to a file *or* copies it to the clipboard — never both. ShotClip does both: press the native shortcuts (⌘⇧3/4/5) and the screenshot lands in your folder **and** on your clipboard, instantly.
 
-A menu bar app. No new shortcuts, no screen recording permission, no polling.
+A tiny menu bar app. No new shortcuts, no screen recording permission, no Electron, no subscription.
 
-## Download
+<!-- ![demo](docs/demo.gif) -->
 
-Grab `ShotClip-vX.Y.Z.zip` from the [latest release](https://github.com/milhero/ShotClip/releases/latest), unzip, and move ShotClip.app to /Applications. The app is not notarized, so on first launch allow it under System Settings → Privacy & Security.
+## Install
 
-## Build from source
+Download `ShotClip.zip` from the [latest release](https://github.com/milhero/ShotClip/releases/latest), unzip, drop it in /Applications. Not notarized — first launch via right-click → Open.
 
-Requires macOS 13+ and the Xcode Command Line Tools.
+Or build it yourself (macOS 13+, Xcode Command Line Tools):
 
 ```sh
-git clone https://github.com/milhero/ShotClip.git
-cd ShotClip
-make install
+git clone https://github.com/milhero/ShotClip.git && cd ShotClip && make install
 ```
-
-macOS will ask once for access to your screenshot folder.
 
 ## Settings
 
-Everything is in the menu bar icon and under Settings…:
+All in the menu bar icon:
 
-- Screenshot folder — sets the native save location, so it applies system-wide
-- Clean Screenshot Folder — moves every screenshot in the folder to the Trash (with a confirmation); only files macOS marks as screenshots are touched, so other files are left alone
-- Instant Capture — on by default; turns off macOS's floating thumbnail so the screenshot is written to disk (and copied) immediately instead of ~5 s later. Turn it off if you want the thumbnail/markup back
-- Copy as image / as file — both by default: image editors paste pixels, Finder and Slack paste the file
-- Hide the menu bar icon — launch ShotClip again to reopen the settings window
-- Launch at login
+- **Screenshot folder** — sets the native save location, system-wide
+- **Instant Capture** (default on) — disables the floating thumbnail; that thumbnail is why macOS otherwise writes the file ~5 s late
+- **Clean Screenshot Folder** — trashes all screenshots in the folder, nothing else
+- **Copy as image / as file** — editors paste pixels, Finder/Slack paste the file
+- Launch at login, hide the menu bar icon
 
 ## How it works
 
-ShotClip watches your screenshot folder with a kqueue directory source, so a new screenshot is picked up within milliseconds of being saved and lands on the clipboard immediately. `screencapture` writes a hidden temp file and then atomically renames it to the final name, so ShotClip ignores hidden files and only acts on the finished file — it never reads a half-written image. A low-frequency poll runs as a backstop in case a file-system event is ever missed. The saving itself is done by macOS.
+macOS itself captures and saves — ShotClip just watches the folder with a kqueue source and copies each finished file within milliseconds. `screencapture` writes a hidden temp file first and renames it when done, so half-written images are never touched. A slow poll backstops missed events.
 
-(Earlier versions detected screenshots via Spotlight's `kMDItemIsScreenCapture` attribute; that was reliable but added a ~1–2 s indexing lag, which is why a screenshot sometimes reached the clipboard only after the next one was taken.)
+Earlier versions used Spotlight (`kMDItemIsScreenCapture`), which added 1–2 s of indexing lag — that's gone.
 
 ## Troubleshooting
 
-- Nothing copied: make sure the screenshot folder in Settings matches your actual save location (⌘⇧5 ▸ Options ▸ Save to).
-- Launch at login fails: install via `make install`, don't run from the build directory.
-- Launch at login looks on but doesn't fire: macOS often registers the app as *needs approval* — switch ShotClip on under System Settings ▸ General ▸ Login Items. The menu shows "(needs approval)" in this state. Because each `make install` re-signs the app ad-hoc, you may need to re-approve after reinstalling.
+- Nothing copied → check the folder in Settings matches ⌘⇧5 ▸ Options ▸ Save to
+- Launch at login "on" but not firing → approve ShotClip under System Settings ▸ Login Items (needed again after reinstalls, ad-hoc signing)
 
 ## License
 
