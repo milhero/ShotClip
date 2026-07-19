@@ -6,142 +6,177 @@
 <title>ShotClip — save Mac screenshots to a file and the clipboard at the same time</title>
 <meta name="description" content="macOS saves a screenshot to a file or copies it to the clipboard — never both. ShotClip is a tiny free menu bar app that does both, instantly, with the native ⌘⇧3/4/5 shortcuts.">
 <link rel="canonical" href="https://milhero.github.io/ShotClip/">
-<link rel="icon" href="icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta property="og:title" content="ShotClip — screenshots to file and clipboard, instantly">
 <meta property="og:description" content="Free, open-source macOS menu bar app. Native shortcuts, no subscription.">
 <meta property="og:url" content="https://milhero.github.io/ShotClip/">
 <meta property="og:image" content="https://milhero.github.io/ShotClip/icon.png">
-<!-- Google Search Console: nach dem Anlegen der Property den Verifizierungs-Tag hier einfügen:
-<meta name="google-site-verification" content="DEIN_CODE"> -->
 <style>
-  :root { color-scheme: light dark; --accent: #0071e3; --muted: #6e6e73; }
-  * { box-sizing: border-box; }
+  * { box-sizing: border-box; margin: 0; }
   body {
-    margin: 0; font: 17px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    color: #1d1d1f; background: #fff; padding: 0 20px;
+    background: #fff; color: #1a1a1a;
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
   }
-  main { max-width: 640px; margin: 0 auto; padding: 48px 0 80px; }
-  .top {
-    display: flex; align-items: center; justify-content: space-between; margin-bottom: 44px;
+  a { color: inherit; }
+  main { max-width: 720px; margin: 0 auto; padding: 0 24px 80px; }
+
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 0 72px;
   }
-  .top img { width: 56px; height: 56px; border-radius: 13px; }
-  .top a { color: var(--muted); text-decoration: none; font-size: 0.9rem; }
-  .top a:hover { color: var(--accent); }
-  h1 { font-size: 2.4rem; line-height: 1.15; margin: 0 0 10px; letter-spacing: -0.02em; }
-  .tag { color: var(--muted); font-size: 1.15rem; margin: 0 0 30px; }
-  h2 { font-size: 1.15rem; margin: 44px 0 8px; }
-  p { margin: 0 0 14px; }
+  .brand { display: flex; align-items: center; gap: 9px; font-weight: 600; font-size: 0.95rem; }
+  .brand img { width: 26px; height: 26px; border-radius: 6px; }
+  .ghlink {
+    display: inline-flex; align-items: center; gap: 7px;
+    color: #666; text-decoration: none; font-size: 0.88rem;
+  }
+  .ghlink:hover { color: #1a1a1a; }
+  .ghlink svg { width: 17px; height: 17px; fill: currentColor; }
+
+  /* hero */
+  .hero { text-align: center; }
+  .hero .appicon { width: 96px; height: 96px; border-radius: 22px; box-shadow: 0 2px 8px rgba(0,0,0,.10), 0 12px 32px rgba(0,0,0,.12); }
+  h1 {
+    font-size: clamp(1.9rem, 5vw, 2.75rem);
+    line-height: 1.14; letter-spacing: -0.024em; font-weight: 700;
+    margin: 30px auto 14px; max-width: 560px;
+  }
+  .lede { font-size: 1.08rem; color: #565656; max-width: 490px; margin: 0 auto 30px; }
   kbd {
     font: 0.85em ui-monospace, SFMono-Regular, Menlo, monospace;
-    background: #f2f2f4; border: 1px solid #d9d9de; border-bottom-width: 2px;
-    border-radius: 5px; padding: 1px 6px; white-space: nowrap;
+    background: #f4f4f5; border: 1px solid #dfdfe3; border-bottom-width: 2px;
+    border-radius: 5px; padding: 1px 6px; white-space: nowrap; color: #1a1a1a;
   }
-  /* visual flow */
-  .flow {
-    display: flex; align-items: center; justify-content: center; gap: 14px;
-    flex-wrap: wrap; margin: 30px 0; padding: 22px 16px;
-    background: #f5f5f7; border-radius: 14px; font-size: 1.05rem;
-  }
-  .flow .big { font-size: 1.5rem; }
-  .flow .arrow { color: var(--muted); font-size: 1.3rem; }
-  .flow .plus { color: var(--muted); }
-  .flow .out {
-    display: flex; align-items: center; gap: 7px;
-    background: #fff; border: 1px solid #e3e3e8; border-radius: 10px; padding: 7px 13px;
-  }
-  .cta { margin: 28px 0 8px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .cta { display: flex; justify-content: center; align-items: center; gap: 12px; flex-wrap: wrap; }
   .btn {
-    display: inline-block; background: var(--accent); color: #fff; text-decoration: none;
-    padding: 11px 24px; border-radius: 11px; font-weight: 600;
+    background: #1a1a1a; color: #fff; text-decoration: none; font-weight: 600;
+    padding: 11px 22px; border-radius: 9px; font-size: 0.95rem;
+    display: inline-flex; align-items: center; gap: 8px;
   }
-  .btn:hover { background: #0077ed; }
-  .star { color: var(--muted); text-decoration: none; font-size: 0.95rem; }
-  .star:hover { color: var(--accent); }
-  .sub { font-size: 0.85rem; color: var(--muted); }
+  .btn:hover { background: #000; }
+  .btn-gh {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: #fff; color: #1a1a1a; text-decoration: none; font-weight: 600;
+    font-size: 0.95rem; padding: 10px 18px; border-radius: 9px;
+    border: 1px solid #d6d6db;
+  }
+  .btn-gh:hover { border-color: #1a1a1a; }
+  .btn-gh svg { width: 17px; height: 17px; fill: currentColor; }
+  .btn-gh .star { width: 14px; height: 14px; margin-left: -2px; }
   .cmd {
-    display: flex; align-items: center; gap: 10px;
-    background: #f5f5f7; border-radius: 10px; padding: 11px 14px; margin: 14px 0;
-    font: 0.88rem ui-monospace, SFMono-Regular, Menlo, monospace;
+    display: inline-flex; align-items: center; gap: 12px; margin-top: 18px;
+    background: #fafafa; border: 1px solid #ebebee; border-radius: 8px;
+    padding: 8px 8px 8px 14px;
+    font: 0.84rem ui-monospace, SFMono-Regular, Menlo, monospace; color: #1a1a1a;
   }
-  .cmd code { flex: 1; overflow-x: auto; white-space: nowrap; }
   .cmd button {
-    font: 600 0.78rem -apple-system, sans-serif; color: var(--accent);
-    background: none; border: 1px solid #d9d9de; border-radius: 7px;
+    font: 600 0.72rem -apple-system, sans-serif; color: #555;
+    background: #fff; border: 1px solid #ddddE2; border-radius: 6px;
     padding: 4px 10px; cursor: pointer;
   }
-  .cmd button:hover { border-color: var(--accent); }
+  .cmd button:hover { color: #1a1a1a; border-color: #aaa; }
+  .fineprint { font-size: 0.8rem; color: #8e8e93; margin-top: 12px; }
+
+  /* hero media: real menu screenshot (video replaces this once available) */
+  .heromedia { margin: 64px auto 0; max-width: 435px; }
+  .heromedia img { width: 100%; display: block; filter: drop-shadow(0 16px 32px rgba(0,0,0,.16)); }
+  .heromedia figcaption { font-size: 0.8rem; color: #8e8e93; margin-top: 18px; text-align: center; }
+  /* DEMO SLOT — swap in when the recording exists:
+  .heromedia { max-width: 640px; }
+  <video autoplay loop muted playsinline poster="demo-poster.jpg" style="width:100%;border-radius:12px">
+    <source src="demo.mp4" type="video/mp4">
+  </video>
+  */
+
+  section { margin-top: 96px; }
+  h2 { font-size: 1.3rem; letter-spacing: -0.015em; margin-bottom: 10px; }
+  section p { color: #494949; margin-bottom: 13px; max-width: 580px; }
+  section p strong { color: #1a1a1a; }
+  section a { color: #1a1a1a; }
+
+  .shot { margin: 28px 0 0; }
+  .shot img { display: block; width: 100%; max-width: 480px; }
+
   pre {
-    background: #f5f5f7; border-radius: 10px; padding: 12px 14px; overflow-x: auto;
-    font: 0.85rem ui-monospace, SFMono-Regular, Menlo, monospace;
+    background: #fafafa; border: 1px solid #ebebee; border-radius: 8px;
+    padding: 12px 15px; overflow-x: auto; margin-bottom: 13px;
+    font: 0.84rem ui-monospace, SFMono-Regular, Menlo, monospace;
   }
-  img.demo { width: 100%; border-radius: 12px; margin: 18px 0; }
-  a { color: #0066cc; }
-  footer { margin-top: 56px; font-size: 0.85rem; color: var(--muted); }
-  @media (prefers-color-scheme: dark) {
-    body { background: #1c1c1e; color: #f2f2f4; }
-    kbd { background: #2c2c2e; border-color: #48484a; }
-    .flow { background: #26262a; }
-    .flow .out { background: #1c1c1e; border-color: #3a3a3e; }
-    .cmd, pre { background: #26262a; }
-    .cmd button { border-color: #48484a; }
-    a { color: #409cff; }
+
+  footer {
+    margin-top: 100px; padding-top: 20px; border-top: 1px solid #ececef;
+    display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+    font-size: 0.82rem; color: #8e8e93;
   }
+  footer a { color: #8e8e93; text-decoration: none; }
+  footer a:hover { color: #1a1a1a; text-decoration: underline; }
 </style>
 </head>
 <body>
 <main>
-  <div class="top">
-    <img src="icon.png" alt="ShotClip app icon">
-    <a href="https://github.com/milhero/ShotClip">View on GitHub →</a>
+  <header>
+    <span class="brand"><img src="icon.png" alt=""> ShotClip</span>
+    <a class="ghlink" href="https://github.com/milhero/ShotClip">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+      GitHub
+    </a>
+  </header>
+
+  <div class="hero">
+    <img class="appicon" src="icon.png" alt="ShotClip app icon" width="96" height="96">
+    <h1>Screenshots to file and clipboard. At the same time.</h1>
+    <p class="lede">macOS makes you pick — <kbd>⌘⇧4</kbd> saves a file, <kbd>⌃⌘⇧4</kbd> copies. ShotClip is a tiny menu bar app that gives you both, with the shortcuts you already use.</p>
+
+    <div class="cta">
+      <a class="btn" href="https://github.com/milhero/ShotClip/releases/latest">Download for macOS</a>
+      <a class="btn-gh" href="https://github.com/milhero/ShotClip">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+        Star
+        <svg class="star" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"/></svg>
+      </a>
+    </div>
+    <div class="cmd">
+      <code id="brew">brew install milhero/tap/shotclip</code>
+      <button onclick="navigator.clipboard.writeText('brew install milhero/tap/shotclip').then(()=>{this.textContent='Copied';setTimeout(()=>this.textContent='Copy',1500)})">Copy</button>
+    </div>
+    <p class="fineprint">Free &amp; open source (MIT) · macOS 13+ · v1.1.0 · ~300 KB</p>
+
+    <figure class="heromedia">
+      <img src="menu.png" alt="ShotClip's menu in the macOS menu bar" width="870" height="628">
+      <figcaption>The whole app. It watches, copies, and stays out of the way.</figcaption>
+    </figure>
   </div>
 
-  <h1>ShotClip</h1>
-  <p class="tag">Mac screenshots — saved to a file <em>and</em> copied to the clipboard. At the same time, instantly.</p>
+  <section>
+    <h2>Instant, not eventually</h2>
+    <p>Most “auto-copy screenshot” hacks feel laggy for two reasons: Spotlight-based detection adds 1–2 seconds of indexing delay, and macOS's floating thumbnail delays the file write by another ~5 seconds. ShotClip watches the folder directly and turns the thumbnail off by default — the screenshot is pasteable <strong>the moment you release the mouse</strong>.</p>
+  </section>
 
-  <p>macOS makes you pick: <kbd>⌘⇧4</kbd> saves a screenshot to a file, <kbd>⌃⌘⇧4</kbd> copies it to the clipboard — never both. So you either have a file you can't paste, or a paste with no file to keep.</p>
+  <section>
+    <h2>Pastes everywhere</h2>
+    <p>ShotClip puts both the image and the file on the clipboard in a single copy. Image editors paste pixels; Finder, Slack and Mail paste the file. Both are on by default, each can be toggled off.</p>
+    <div class="shot"><img src="settings.png" alt="ShotClip settings window" width="552" height="470"></div>
+  </section>
 
-  <div class="flow" aria-hidden="true">
-    <span><kbd class="big">⌘⇧4</kbd></span>
-    <span class="arrow">→</span>
-    <span class="out">📁 <span>saved to your folder</span></span>
-    <span class="plus">+</span>
-    <span class="out">📋 <span>on your clipboard</span></span>
-  </div>
+  <section>
+    <h2>Small and honest</h2>
+    <p>~300 KB of native Swift. No Electron, no cloud, no accounts, no screen-recording permission — macOS itself does the capturing and saving, ShotClip only watches the folder. From the menu: change the system-wide screenshot folder, pause copying, or clean the whole folder into the Trash with one click.</p>
+  </section>
 
-  <p>ShotClip removes the choice. Keep the native shortcuts you already know — every screenshot lands in your folder <strong>and</strong> is ready to <kbd>⌘V</kbd>.</p>
-
-  <!-- <img class="demo" src="demo.gif" alt="Taking a screenshot with cmd-shift-4 and pasting it immediately"> -->
-
-  <div class="cta">
-    <a class="btn" href="https://github.com/milhero/ShotClip/releases/latest">Download for macOS</a>
-    <a class="star" href="https://github.com/milhero/ShotClip">★ Star on GitHub</a>
-  </div>
-  <div class="cmd">
-    <code id="brew">brew install milhero/tap/shotclip</code>
-    <button onclick="navigator.clipboard.writeText(document.getElementById('brew').textContent).then(()=>{this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1500)})">Copy</button>
-  </div>
-  <p class="sub">Free &amp; open source (MIT) · macOS 13+ · ~300 KB · not notarized: first launch via right-click → Open</p>
-
-  <h2>Why it feels instant</h2>
-  <p>Two things usually make “auto-copy screenshot” tools feel laggy: Spotlight-based detection (1–2 s indexing delay) and macOS's floating thumbnail, which delays the file write by ~5 seconds. ShotClip watches the folder directly with a kqueue source and turns the thumbnail off by default — so the screenshot is on your clipboard the moment you release the mouse.</p>
-
-  <h2>What it doesn't do</h2>
-  <p>No annotation, no cloud upload, no scrolling capture, no subscription. If you want a full screenshot suite, look at CleanShot X or Shottr. ShotClip does the one thing macOS forgot, and stays out of the way — no new shortcuts, no screen-recording permission, no Electron.</p>
-
-  <h2>Also in the menu bar</h2>
-  <p>Change the system-wide screenshot folder, paste as pixels or as a file (both by default), clean the screenshot folder into the Trash with one click, launch at login.</p>
-
-  <h2>Install</h2>
-  <div class="cmd">
-    <code id="brew2">brew install milhero/tap/shotclip</code>
-    <button onclick="navigator.clipboard.writeText(document.getElementById('brew2').textContent).then(()=>{this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1500)})">Copy</button>
-  </div>
-  <p>Or <a href="https://github.com/milhero/ShotClip/releases/latest">download the zip</a> and drop ShotClip.app into Applications. Or build from source:</p>
-  <pre>git clone https://github.com/milhero/ShotClip.git
+  <section>
+    <h2>Install</h2>
+    <pre>brew install milhero/tap/shotclip</pre>
+    <p>Or <a href="https://github.com/milhero/ShotClip/releases/latest">download the zip</a> and drop ShotClip.app into Applications — not notarized, so open it the first time via right-click → Open. Or build from source:</p>
+    <pre>git clone https://github.com/milhero/ShotClip.git
 cd ShotClip &amp;&amp; make install</pre>
+  </section>
 
   <footer>
-    <a href="https://github.com/milhero/ShotClip">Source on GitHub</a> · MIT © Milan Ronneberg
+    <span>MIT © Milan Ronneberg</span>
+    <span><a href="https://github.com/milhero/ShotClip">Source</a> · <a href="https://github.com/milhero/ShotClip/issues">Issues</a> · <a href="https://github.com/milhero/ShotClip/releases">Releases</a></span>
   </footer>
 </main>
 </body>
