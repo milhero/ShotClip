@@ -72,24 +72,23 @@
     padding: 8px 8px 8px 14px;
     font: 0.84rem ui-monospace, SFMono-Regular, Menlo, monospace; color: #1a1a1a;
   }
-  .cmd button {
+  .copybtn {
     font: 600 0.72rem -apple-system, sans-serif; color: #555;
-    background: #fff; border: 1px solid #ddddE2; border-radius: 6px;
-    padding: 4px 10px; cursor: pointer;
+    background: #fff; border: 1px solid #dddde2; border-radius: 6px;
+    width: 58px; padding: 4px 0; text-align: center; cursor: pointer;
   }
-  .cmd button:hover { color: #1a1a1a; border-color: #aaa; }
+  .copybtn:hover { color: #1a1a1a; border-color: #aaa; }
+  .codeblock { position: relative; max-width: 580px; }
+  .codeblock .copybtn {
+    position: absolute; top: 8px; right: 8px; opacity: 0; transition: opacity .15s;
+  }
+  .codeblock:hover .copybtn, .codeblock .copybtn:focus-visible { opacity: 1; }
   .fineprint { font-size: 0.8rem; color: #8e8e93; margin-top: 12px; }
 
   /* hero media: real menu screenshot (video replaces this once available) */
   .heromedia { margin: 64px auto 0; max-width: 435px; }
   .heromedia img { width: 100%; height: auto; display: block; filter: drop-shadow(0 16px 32px rgba(0,0,0,.16)); }
   .heromedia figcaption { font-size: 0.8rem; color: #8e8e93; margin-top: 18px; text-align: center; }
-  /* DEMO SLOT — swap in when the recording exists:
-  .heromedia { max-width: 640px; }
-  <video autoplay loop muted playsinline poster="demo-poster.jpg" style="width:100%;border-radius:12px">
-    <source src="demo.mp4" type="video/mp4">
-  </video>
-  */
 
   section { margin-top: 96px; }
   h2 { font-size: 1.3rem; letter-spacing: -0.015em; margin-bottom: 10px; }
@@ -128,7 +127,7 @@
   <div class="hero">
     <img class="appicon" src="icon.png" alt="ShotClip app icon" width="96" height="96">
     <h1>Screenshots to file and clipboard. At the same time.</h1>
-    <p class="lede">macOS makes you pick — <kbd>⌘⇧4</kbd> saves a file, <kbd>⌃⌘⇧4</kbd> copies. ShotClip is a tiny menu bar app that gives you both, with the shortcuts you already use.</p>
+    <p class="lede">You take a screenshot — and to paste it anywhere, you first have to find the file, right-click, copy. ShotClip is a tiny menu bar app that puts every screenshot straight on your clipboard the moment it's saved, with the shortcuts you already use.</p>
 
     <div class="cta">
       <a class="btn" href="https://github.com/milhero/ShotClip/releases/latest">Download for macOS</a>
@@ -139,8 +138,8 @@
       </a>
     </div>
     <div class="cmd">
-      <code id="brew">brew install milhero/tap/shotclip</code>
-      <button onclick="navigator.clipboard.writeText('brew install milhero/tap/shotclip').then(()=>{this.textContent='Copied';setTimeout(()=>this.textContent='Copy',1500)})">Copy</button>
+      <code>brew install milhero/tap/shotclip</code>
+      <button class="copybtn" data-copy="brew install milhero/tap/shotclip">Copy</button>
     </div>
     <p class="fineprint">Free &amp; open source (MIT) · macOS 13+ · v1.1.0 · ~300 KB</p>
 
@@ -168,10 +167,16 @@
 
   <section>
     <h2>Install</h2>
-    <pre>brew install milhero/tap/shotclip</pre>
+    <div class="codeblock">
+      <pre>brew install milhero/tap/shotclip</pre>
+      <button class="copybtn" data-copy="brew install milhero/tap/shotclip">Copy</button>
+    </div>
     <p>Or <a href="https://github.com/milhero/ShotClip/releases/latest">download the zip</a> and drop ShotClip.app into Applications — not notarized, so open it the first time via right-click → Open. Or build from source:</p>
-    <pre>git clone https://github.com/milhero/ShotClip.git
+    <div class="codeblock">
+      <pre>git clone https://github.com/milhero/ShotClip.git
 cd ShotClip &amp;&amp; make install</pre>
+      <button class="copybtn" data-copy="git clone https://github.com/milhero/ShotClip.git&#10;cd ShotClip &amp;&amp; make install">Copy</button>
+    </div>
   </section>
 
   <footer>
@@ -179,5 +184,15 @@ cd ShotClip &amp;&amp; make install</pre>
     <span><a href="https://github.com/milhero/ShotClip">Source</a> · <a href="https://github.com/milhero/ShotClip/issues">Issues</a> · <a href="https://github.com/milhero/ShotClip/releases">Releases</a></span>
   </footer>
 </main>
+<script>
+document.querySelectorAll('.copybtn').forEach(function (b) {
+  b.addEventListener('click', function () {
+    navigator.clipboard.writeText(b.dataset.copy).then(function () {
+      b.textContent = '✓';
+      setTimeout(function () { b.textContent = 'Copy'; }, 1400);
+    });
+  });
+});
+</script>
 </body>
 </html>
